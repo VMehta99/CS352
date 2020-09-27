@@ -1,27 +1,72 @@
 import java.util.*;
 import java.io.*; 
 import java.net.*; 
+import java.util.concurrent.*;
 
-class PartialHTTP1Server{
-    public static void main(String[]args) throws IOException{
-        if (args.length != 1) {
-            System.err.println("Invalid port number!");
-            System.exit(1);
+public class PartialHTTP1Server extends Thread{
+    private Socket socket;
+ 
+    public PartialHTTP1Server(Socket socket) {
+        this.socket = socket;
+    }
+ 
+    //TESTER: REVERSES TEXT
+    public void run() {
+        try {
+            InputStream input = socket.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+ 
+            OutputStream output = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(output, true);
+ 
+ 
+            String text;
+ 
+            //Reverses text until exit - FOR TESTING ONLY
+            do {
+                text = reader.readLine();
+                String reverseText = new StringBuilder(text).reverse().toString();
+                writer.println("Server: " + reverseText);
+ 
+            } while (!text.equals("exit"));
+ 
+            socket.close();
+        } catch (IOException ex) {
+            System.out.println("Server exception: " + ex.getMessage());
+            ex.printStackTrace();
         }
-         
-        //passing port number as integer, "portNumber"
-        int portNumber = Integer.parseInt(args[0]);
-         
-        try (
-            //Create serverSocket w/ port args[0]
-            ServerSocket serverSocket = new ServerSocket(Integer.parseInt(args[0]));
+    }
 
-            //Accept clientSocket on connection. 
-            Socket clientSocket = serverSocket.accept();     
+    public static void main(String[] args) {
+        if (args.length < 1) return;
+ 
+        int port = Integer.parseInt(args[0]);
+ 
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+ 
+            System.out.println("Server is listening on port " + port);
+ 
+            while (true) {
+                Socket socket = serverSocket.accept();
+                System.out.println("New client connected");
+                
+                //CREATE THREAD HERE:
+               PartialHTTP1Server serverThread = new PartialHTTP1Server(socket);
+                serverThread.start();
+                // serverThread.join();
+                // try{
+                //     serverThread.join();
+                // }
+                // catch(InterruptedException e){
+                //  System.out.println("Thread exception: " + e.getMessage());
 
-        ) {
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
+                // }
+            }
+ 
+        } catch (IOException ex) {
+            System.out.println("Server exception: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 }
+
