@@ -4,8 +4,9 @@ import java.net.*;
 
 class PartialHttp1Server {
     public static void main(String[]args) throws Exception{ 
+        
         if (args.length < 1) return;
- 
+        // serverThread.initErrorCodes();
         int port = Integer.parseInt(args[0]);
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
