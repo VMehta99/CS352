@@ -37,18 +37,30 @@ public class serverThread extends Thread {
         
     }
  
-    public void run() {
+    public void run(){
         String request;
         String[] requestParts;
 
         //if cant readline, 500
         try {
+            this.client.setSoTimeout(5000); // wait for 5 sec
             request = inFromClient.readLine();
-        } catch (IOException e) {
+        } catch (SocketTimeoutException e){
+            try{
+                byte[] byteMessage = "HTTP/1.0 408 Request Timeout".getBytes();
+			    outToClient.write(byteMessage);
+                close();
+                return;
+            }
+            catch (IOException io) {
+                sendErrorCode(500);
+                return;
+            }
+        } catch (IOException io) {
             sendErrorCode(500);
             return;
-        }
-        
+        } 
+
         if(request==null){
             sendErrorCode(400);
             return;
