@@ -120,27 +120,30 @@ public class serverThread extends Thread {
 
     //REWRITE
     public boolean isValidMethod(String method){
-        String[] commandList = {"PUT", "DELETE", "LINK", "UNLINK", "GET", "HEAD", "POST"};
 
-        boolean found = false;
-        for(int i = 0; i < commandList.length; i++)
-            if(method.equals(commandList[i]))
-                found = true;
-        
-        //Check if the command is a valid HTTP/1.0 command 
-        if(!found)
-        {
-            sendErrorCode(400);
-            return false;
+        switch(method){
+            case "PUT":
+                sendErrorCode(501);
+                return false;
+            case "DELETE":
+                sendErrorCode(501);
+                return false;
+            case "LINK":
+                sendErrorCode(501);
+                return false;
+            case "UNLINK":
+                sendErrorCode(501);
+                return false;
+            case "GET":
+                return true;
+            case "HEAD":
+                return true;
+            case "POST":
+                return true;
+            default:
+                sendErrorCode(400);
+                return false;
         }
-
-        if(!method.equals("GET") && !method.equals("POST") && !method.equals("HEAD"))
-        {
-            sendErrorCode(501);
-            return false;
-        }
-
-        return true;
 
     }
 
