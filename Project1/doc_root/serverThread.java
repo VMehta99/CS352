@@ -25,6 +25,7 @@ public class serverThread extends Thread {
             sendErrorCode(408);
         }
 
+        //Define global variable -> going to be used for communication w/ client later.
         try{
             inFromClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
             outToClient = new DataOutputStream(client.getOutputStream());
@@ -35,19 +36,18 @@ public class serverThread extends Thread {
         }
         
     }
-
  
     public void run() {
         String request;
         String[] requestParts;
 
+        //if cant readline, 500
         try {
             request = inFromClient.readLine();
         } catch (IOException e) {
             sendErrorCode(500);
             return;
         }
-
         
         if(request==null){
             sendErrorCode(400);
@@ -63,6 +63,7 @@ public class serverThread extends Thread {
             return;
         }
 
+        //each part of the request:
         String method = requestParts[0];
         String file = requestParts[1];
         String modified = ""; 
@@ -70,6 +71,7 @@ public class serverThread extends Thread {
         if(!isValidMethod(requestParts[0]))
             return;
 
+        //verify the version: if not 1.0, 505 
         String version = requestParts[2].split("/")[1];
         if(!version.equals("1.0")){
             sendErrorCode(505);
@@ -86,41 +88,35 @@ public class serverThread extends Thread {
         boolean is304 = false;
         Date modifiedDate = null;
 
+
+        //This segment is used to compare the IF-Modified-By field in the request. 
         if(!modified.trim().equals("")){
             modified = modified.substring(modified.indexOf(":") + 2);
-
             try{
-
                 modifiedDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'").parse(modified);
                 long requestTime = modifiedDate.getTime();
 
                 File new_file = new File("." + file);
                 long fileTime = new_file.lastModified();
                 
+                //convert times to long and compare. 
                 if(requestTime>fileTime && !method.equals("HEAD"))
                     is304=true;
             }
             catch(Exception e){
                 is304 =false;
-                System.out.println("yer");
             }
-            
         }
         if(is304)
             sendErrorCode(304);
-
-        //LAST CHECK -- DO NOT MOVE THIS LOL
+        //LAST CHECK
         if(isValidFile(file))
             handleRequest(method,file,200);
-        
-        
-
     }
 
 
-    //REWRITE
+    //Check each type of method
     public boolean isValidMethod(String method){
-
         switch(method){
             case "PUT":
                 sendErrorCode(501);
@@ -144,28 +140,25 @@ public class serverThread extends Thread {
                 sendErrorCode(400);
                 return false;
         }
-
     }
 
+    // Check if the file is valid. 403 for unreadable, 404 for not found
     public boolean isValidFile(String file){
         File f = new File("."+file);
         Path p = Paths.get("."+file);
             if(f.exists()) { 
                 if(Files.isReadable(p)){
-                    // sendErrorCode(200,file);
                     return true;
                 }
                 else{
                     sendErrorCode(403);
                     return false;
                 }
-                
             }
             else{
                 sendErrorCode(404);
                 return false;
             }
-
     }
 
     /*
@@ -223,11 +216,9 @@ public class serverThread extends Thread {
                 ErrorMessage="HTTP Version Not Supported";
                 break;
         }
-
+        
+        //Format the header message.
         String message = String.format("HTTP/1.0 %s %s", code, ErrorMessage);
-
-       
-
         try{
             System.out.println(message);
             outToClient.writeBytes(message);
@@ -241,21 +232,16 @@ public class serverThread extends Thread {
 
 
 
-    //HANDLE REQUEST ONLY WHEN 200 CODE
+    //HANDLES 200 and 304 REQUESTS ONLY -> Gets called when all checks were validated.
     public void handleRequest(String method,String file, int code)
     {   
         String message="";
-
         if(code ==200)
             message = String.format("HTTP/1.0 %s %s", 200, "OK");
         if(code == 304)
             message = String.format("HTTP/1.0 %s %s", 304, "Not Modified");
 
-        // System.out.println(createHeader(file));
-       
-
         try{
-            // System.out.println(message);
             outToClient.writeBytes(message + "\r\n" + createHeader(file) + "\r\n" + "\r\n") ;
             outToClient.flush();
 
@@ -272,7 +258,7 @@ public class serverThread extends Thread {
                 outToClient.flush();
             }
             catch(IOException e){
-                System.out.println("FUCK");
+                System.out.println("it broke");
             }
 
 
@@ -281,6 +267,18 @@ public class serverThread extends Thread {
     }
 
 
+    // Assembles the header
+    /*
+        FORMAT FOR REFERENCE | REQUEST EXAMPLE: GET resouces/bitcoin.pdf HTTP/1.0
+            HTTP/1.0 200 OK[CRLF]
+            Content-Type: application/pdf[CRLF]
+            Content-Length: 184292[CRLF]
+            Last-Modified: Tue, 14 Jul 2015 14:13:49 GMT[CRLF]
+            Content-Encoding: identity[CRLF]
+            Allow: GET, HEAD, POST[CRLF]
+            Expires: Fri, 01 Oct 2021 03:44:00 GMT[CRLF]
+            [CRLF]
+    */
 
     private String createHeader(String fileName){
 
@@ -288,6 +286,7 @@ public class serverThread extends Thread {
         
         extension = fileName.substring(fileName.lastIndexOf(".") + 1);
         
+        //Mime Types:
         if (extension.equals("pdf")){
             MIME = "application/pdf";
         }  
@@ -347,7 +346,7 @@ public class serverThread extends Thread {
         try {
             client.close();
         } catch (IOException e) {
-            System.out.println("Error closing socket:\n" + e.getStackTrace());
+            System.out.println(e.getStackTrace());
         }
     }
 }
