@@ -299,17 +299,19 @@ public class serverThread extends Thread {
         if(code == 304)
             message = String.format("HTTP/1.0 %s %s", 304, "Not Modified");
 
-        // try{
-        //     outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
-        //     outToClient.flush();
+        if(method.equals("HEAD")){
+            try{
+                outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
+                outToClient.flush();
 
-        // }catch(IOException e){
-        //     System.out.printf("Error sending response to client");
-        // }
+            }catch(IOException e){
+                System.out.printf("Error sending response to client");
+            }
+        }
 
 
-        ProcessBuilder pbBuilder = new ProcessBuilder(file);
-        Map<String, String> env = pbBuilder.environment();
+        // ProcessBuilder pbBuilder = new ProcessBuilder(file);
+        // Map<String, String> env = pbBuilder.environment();
         // "file" is a string from the client request. 
         if((method.equals("GET") || method.equals("POST")) && code==200){
             try{
@@ -318,16 +320,27 @@ public class serverThread extends Thread {
                     System.out.println(file);
 
                     // set ProcessBuilder environment variables
-                    try {
-                        env.put("CONTENT_LENGTH", CONTENT_LENGTH);
-                        env.put("SCRIPT_NAME", "." + file);
-                        env.put("HTTP_FROM", FROM);
-                        env.put("HTTP_USER_AGENT", USER_AGENT);
-                    } catch (Exception e) {
-                        sendErrorCode(500);
-                    }
+                    // try {
+                    //     env.put("CONTENT_LENGTH", CONTENT_LENGTH);
+                    //     env.put("SCRIPT_NAME", "." + file);
+                    //     env.put("HTTP_FROM", FROM);
+                    //     env.put("HTTP_USER_AGENT", USER_AGENT);
+                    // } catch (Exception e) {
+                    //     sendErrorCode(500);
+                    // }
+                
             
                 if(method.equals("POST")){
+                    ProcessBuilder pb = new ProcessBuilder("." + file); 
+                    try{
+                        pb.environment().put("CONTENT_LENGTH", CONTENT_LENGTH); 
+                        pb.environment().put("SCRIPT_NAME", "." + file); 
+                        pb.environment().put("HTTP_FROM", FROM); 
+                        pb.environment().put("HTTP_USER_AGENT", USER_AGENT);
+                        pb.start();
+                    } catch (Exception e){
+                        sendErrorCode(500);
+                    }
                     ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
                     Process cgiProcess = cgiScriptString.start();
                     String parameterString = PARAMS;                //INSERT PARAMATER
@@ -345,15 +358,10 @@ public class serverThread extends Thread {
                         stringBuffer.append(System.getProperty("line.separator"));
                     }
                     cgiString = stringBuffer.toString();
-                    System.out.println("string is: " + (stringBuffer.toString()));
-                    // if((stringBuffer.toString()).equals("")){
-                    //     sendErrorCode(204);
-                    //     return;
-                    // }
+                    System.out.println("string length is: " + cgiString.length());
                     cgiInputStream.close();
                     cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
                     System.out.println("byte[] is length is: " + cgiOutput.length);
-                    
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
                         outToClient.flush();
@@ -369,16 +377,16 @@ public class serverThread extends Thread {
                     //     env.put("SCRIPT_NAME", "." + file);
                     //     env.put("HTTP_FROM", FROM);
                     //     env.put("HTTP_USER_AGENT", USER_AGENT);
-                    //     System.out.println("content length is: " + CONTENT_LENGTH/*createHeader(file, "POST")*/);
-                    //     System.out.println("Http from is: " + FROM);
-                    //     System.out.println("Http user agent is: " + USER_AGENT);
+                        System.out.println("content length is: " + CONTENT_LENGTH/*createHeader(file, "POST")*/);
+                        System.out.println("Http from is: " + FROM);
+                        System.out.println("Http user agent is: " + USER_AGENT);
                     // } catch (Exception e) {
                     //     sendErrorCode(500);
                     // }
                     outToClient.write(cgiOutput);
                     outToClient.flush();
                 }
-                else{
+                else if(method.equals("GET") || method.equals("HEAD")){
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
                         outToClient.flush();
@@ -549,16 +557,14 @@ public class serverThread extends Thread {
         else {
             MIME = "application/octet-stream";
         }
-        // header += "Content-Type: " + MIME + "\r\n";
-
-
         File new_file = new File("." + fileName);
         long fileSize = new_file.length();
         if(method.equals("GET") || method.equals("HEAD")){
             header += "Content-Type: " + MIME + "\r\n";
             header += "Content-Length: " + fileSize + "\r\n";
         }
-        else if(method.equals("POST")){
+
+        if(method.equals("POST")){
             header += "Content-Length: " + Integer.toString(cgiOutput.length) + "\r\n";
             header += "Content-Type: " + MIME + "\r\n";
         }
@@ -576,7 +582,7 @@ public class serverThread extends Thread {
         cal.add(Calendar.HOUR, 24);
         header += "Expires: " + dateSimpleFormat.format(cal.getTime());
 
-        return header;      
+        return header;
     }
 
     /*
