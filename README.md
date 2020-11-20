@@ -1,6 +1,18 @@
 ### CS352
 Internet Technology Fall 2020
 
+# WebServer (project 3)
+*Currently implemented: (11/18/2020)*
+
+- All functionality from Project 1
+
+## Structure:
+
+* HttpServerTester.jar
+* PartialHTTP1Server.java
+* *cgi_bin* -> Test cases
+* *doc_root* -> *resources*, index.html
+
 # Project 1
 *Currently implemented: (09/21/2020)*
 

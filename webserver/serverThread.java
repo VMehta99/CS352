@@ -6,6 +6,8 @@ import java.nio.file.Paths;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.HashMap;
+
 
 public class serverThread extends Thread {
     private Socket client;
@@ -40,6 +42,8 @@ public class serverThread extends Thread {
         String request;
         String[] requestParts;
 
+
+
         //if cant readline, 500
         try {
             this.client.setSoTimeout(5000); // wait for 5 sec
@@ -65,6 +69,10 @@ public class serverThread extends Thread {
             return;
         }
 
+        // TODO: Make sure that all parts of post request are taken -> put them in enviornment variables
+
+        
+
         //Extract each part of the request
         requestParts = request.split(" ");
         
@@ -76,8 +84,14 @@ public class serverThread extends Thread {
 
         //each part of the request:
         String method = requestParts[0];
+        
+        if(method.equals("POST")){
+            handlePost();
+        }
         String file = requestParts[1];
+       
         String modified = ""; 
+
 
         if(!isValidMethod(requestParts[0]))
             return;
@@ -125,6 +139,7 @@ public class serverThread extends Thread {
             handleRequest(method,file,200);
     }
 
+    
 
     //Check each type of method
     public boolean isValidMethod(String method){
@@ -213,6 +228,9 @@ public class serverThread extends Thread {
             case 408:
                 ErrorMessage="Request Timeout";
                 break;
+            case 411:
+                ErrorMessage="Length Required";
+                break;
             case 500:
                 ErrorMessage="Internal Server Error";
                 break;
@@ -235,7 +253,7 @@ public class serverThread extends Thread {
             outToClient.flush();
 
         }catch(IOException e){
-            System.out.printf("Error sending response to CLIENT");
+            System.out.println(e.getMessage());
         }
         close();
     }
@@ -268,13 +286,57 @@ public class serverThread extends Thread {
                 outToClient.flush();
             }
             catch(IOException e){
-                System.out.println("it broke");
+                System.out.println(e.getMessage());
             }
 
 
         }
         close();
     }
+
+    public void handlePost(){
+        StringBuffer stringBuffer = new StringBuffer("");
+        // for reading one line
+        String line = null;
+        // keep reading till readLine returns null
+        try{
+            while ((line = inFromClient.readLine()) != null) {
+                // keep appending last line read to buffer
+                String delim = "\r\n";
+                if(line.equals("")){
+                    delim = "";
+                }
+                stringBuffer.append(line + delim);
+            }
+        }
+        catch(IOException e){
+            System.out.println("");
+        }
+        String [] postContent = stringBuffer.toString().split("\r\n");
+        String Params;
+        
+    //    TODO: Need to work on edge cases: 
+    //      1. If no params
+    //      2. If no content length -> 411 error
+    //      3. if no Content Type
+        
+        String From = postContent[0].split(":")[1].trim();
+        String UserAgent = postContent[1].split(":")[1].trim();
+        String ContentType = postContent[2].split(":")[1].trim();
+        String ContentLength = postContent[3];
+        Params = postContent[4];
+   
+
+        System.out.println("\n");
+        System.out.println(From);
+        System.out.println(UserAgent);
+        System.out.println(ContentType);
+        System.out.println(ContentLength);
+        System.out.println(Params);
+        // String[] str = stringBuffer.toString().split("||");
+    }
+
+
 
 
     // Assembles the header
