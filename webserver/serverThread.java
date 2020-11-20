@@ -151,8 +151,7 @@ public class serverThread extends Thread {
         if(is304)
             sendErrorCode(304);
 
-        //check extension for cgi
-        String extension = file.substring(file.lastIndexOf(".") + 1); 
+        String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
         if(method.equals("POST")){
             if(!(extension.equals("cgi"))){
                 sendErrorCode(405);
@@ -299,78 +298,82 @@ public class serverThread extends Thread {
         close();
     }
 
-    public boolean verifyPayload(String file){
-      
-
+     public boolean verifyPayload(String file){
+    
             //INSERT PARAMATER
-        String parameterString = PARAMS;       
+        String parameterString = PARAMS;  
+     
 
                     //convert parameters to bytes to write         
-    try{
-        ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
-        Process cgiProcess = cgiScriptString.start();
-        byte[] parameterByte = parameterString.getBytes(); 
-        OutputStream cgiOutputStream = cgiProcess.getOutputStream();
-        cgiOutputStream.write(parameterByte);
-        cgiOutputStream.close();
-        InputStream cgiInputStream = cgiProcess.getInputStream();
-        InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
-        BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
-        StringBuffer stringBuffer = new StringBuffer();
-        String cgiString;
+        try{
+            ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
+            Process cgiProcess = cgiScriptString.start();
+            byte[] parameterByte = parameterString.getBytes(); 
+            OutputStream cgiOutputStream = cgiProcess.getOutputStream();
+            cgiOutputStream.write(parameterByte);
+            cgiOutputStream.close();
+            InputStream cgiInputStream = cgiProcess.getInputStream();
+            InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
+            BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
+            StringBuffer stringBuffer = new StringBuffer();
+            String cgiString;
 
-        // read inputstream and save as string
-        while((cgiString = cgiBufferedReader.readLine()) != null){  
-            stringBuffer.append(cgiString);
+            // read inputstream and save as string
+            while((cgiString = cgiBufferedReader.readLine()) != null){  
+                stringBuffer.append(cgiString);
+            }
+            cgiString = stringBuffer.toString();
+            if(cgiString.length()==0 || cgiString==null)
+                return false;
+
+            cgiInputStream.close();
         }
-        cgiString = stringBuffer.toString();
-         if(cgiString.length()==0 || cgiString==null)
-            return false;
-
-        cgiInputStream.close();
-    }
-    catch(IOException e){
-        System.out.println("bug here");
-    }
+        catch(IOException e){
+            System.out.println("bug here");
+        }
        
         
         return true;
 
     }
 
+
+
     //HANDLES 200 and 304 REQUESTS ONLY -> Gets called when all checks were validated.
     public void handleRequest(String method,String file, int code){   
-        String message="";
 
         if(method.equals("POST") && !verifyPayload(file)){
             sendErrorCode(204);
             return;
         }
 
+        String message="";
         if(code ==200)
             message = String.format("HTTP/1.0 %s %s", 200, "OK");
         if(code == 304)
             message = String.format("HTTP/1.0 %s %s", 304, "Not Modified");
 
-        // try{
-        //     outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
-        //     outToClient.flush();
+        if(method.equals("HEAD")){
+            try{
+                outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
+                outToClient.flush();
 
-        // }catch(IOException e){
-        //     System.out.printf("Error sending response to client");
-        // }
+            }catch(IOException e){
+                System.out.printf("Error sending response to client");
+            }
+        }
 
 
-        ProcessBuilder pbBuilder = new ProcessBuilder(file);
-        Map<String, String> env = pbBuilder.environment();
-        
-        // "file" is a string from the client request. 
         if((method.equals("GET") || method.equals("POST")) && code==200){
             try{
+                String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
+                // System.out.println("extension: " + extension);
+                    System.out.println(file);
                 
-                //check extension for cgi
-                String extension = file.substring(file.lastIndexOf(".") + 1); 
-
+            
+                if(method.equals("POST")){
+                    ProcessBuilder pbBuilder = new ProcessBuilder(file);
+                    Map<String, String> env = pbBuilder.environment();      
                     // set enviornment variables
                     try {
                         env.put("CONTENT_LENGTH", CONTENT_LENGTH);
@@ -380,16 +383,11 @@ public class serverThread extends Thread {
                     } catch (Exception e) {
                         sendErrorCode(500);
                     }
-            
-                if(method.equals("POST")){
+
                     ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
                     Process cgiProcess = cgiScriptString.start();
-
-                    //INSERT PARAMATER
-                    String parameterString = PARAMS;       
-
-                    //convert parameters to bytes to write         
-                    byte[] parameterByte = parameterString.getBytes(); 
+                    String parameterString = PARAMS;                //INSERT PARAMATER
+                    byte[] parameterByte = parameterString.getBytes(); //convert parameters to bytes to write
                     OutputStream cgiOutputStream = cgiProcess.getOutputStream();
                     cgiOutputStream.write(parameterByte);
                     cgiOutputStream.close();
@@ -398,29 +396,14 @@ public class serverThread extends Thread {
                     BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
                     StringBuffer stringBuffer = new StringBuffer();
                     String cgiString;
-
-                    // read inputstream and save as string
-                    while((cgiString = cgiBufferedReader.readLine()) != null){  
+                    while((cgiString = cgiBufferedReader.readLine()) != null){  // read inputstream and save as string
                         stringBuffer.append(cgiString);
                         stringBuffer.append(System.getProperty("line.separator"));
                     }
                     cgiString = stringBuffer.toString();
-<<<<<<< HEAD
-                    cgiInputStream.close();
-                  
-                    
-                    //convert output from string to bytes to write payload
-                    byte[] cgiOutput = cgiString.getBytes(); 
-=======
-                    System.out.println("string is: " + (stringBuffer.toString()));
-                    // if((stringBuffer.toString()).equals("")){
-                    //     sendErrorCode(204);
-                    //     return;
-                    // }
+                    System.out.println(cgiString);
                     cgiInputStream.close();
                     cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
-                    System.out.println("byte[] is length is: " + cgiOutput.length);
-                    
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
                         outToClient.flush();
@@ -429,24 +412,11 @@ public class serverThread extends Thread {
                         System.out.printf("Error sending response to client");
                     }
 
-                    // try {
-                    //     //CONTENT_LENGTH = Integer.toString(cgiOutput.length);
-                        
-                    //     env.put("CONTENT_LENGTH", CONTENT_LENGTH);
-                    //     env.put("SCRIPT_NAME", "." + file);
-                    //     env.put("HTTP_FROM", FROM);
-                    //     env.put("HTTP_USER_AGENT", USER_AGENT);
-                    //     System.out.println("content length is: " + CONTENT_LENGTH/*createHeader(file, "POST")*/);
-                    //     System.out.println("Http from is: " + FROM);
-                    //     System.out.println("Http user agent is: " + USER_AGENT);
-                    // } catch (Exception e) {
-                    //     sendErrorCode(500);
-                    // }
->>>>>>> 325ecf858db9e99784980d1dd39afcf10a900d44
+
                     outToClient.write(cgiOutput);
                     outToClient.flush();
                 }
-                else{
+                else if(method.equals("GET") || method.equals("HEAD")){
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
                         outToClient.flush();
@@ -461,7 +431,7 @@ public class serverThread extends Thread {
                 }
             }
             catch(IOException e){
-                System.out.println("Problems Handling Request");
+                System.out.println("it broke");
             }
 
 
@@ -531,7 +501,6 @@ public class serverThread extends Thread {
         else
             Params = postContent[4];
    
-        // Set global variables 
         PARAMS = decode(Params);
         CONTENT_LENGTH = ContentLength;
         FROM = From;
@@ -541,7 +510,6 @@ public class serverThread extends Thread {
     }
 
 
-    // Decodes given params 
     private String decode(String param){
         String decoded = "";
         boolean skip = false;
@@ -619,24 +587,18 @@ public class serverThread extends Thread {
         else {
             MIME = "application/octet-stream";
         }
-        // header += "Content-Type: " + MIME + "\r\n";
-
-
         File new_file = new File("." + fileName);
         long fileSize = new_file.length();
-<<<<<<< HEAD
-        header += "Content-Length: " + fileSize + "\r\n";
-=======
         if(method.equals("GET") || method.equals("HEAD")){
             header += "Content-Type: " + MIME + "\r\n";
             header += "Content-Length: " + fileSize + "\r\n";
         }
-        else if(method.equals("POST")){
+
+        if(method.equals("POST")){
             header += "Content-Length: " + Integer.toString(cgiOutput.length) + "\r\n";
             header += "Content-Type: " + MIME + "\r\n";
         }
 
->>>>>>> 325ecf858db9e99784980d1dd39afcf10a900d44
         SimpleDateFormat dateSimpleFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
         dateSimpleFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 
@@ -650,7 +612,7 @@ public class serverThread extends Thread {
         cal.add(Calendar.HOUR, 24);
         header += "Expires: " + dateSimpleFormat.format(cal.getTime());
 
-        return header;      
+        return header;
     }
 
     /*
