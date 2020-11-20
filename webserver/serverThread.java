@@ -248,6 +248,9 @@ public class serverThread extends Thread {
             case 404:
                 ErrorMessage="Not Found";
                 break;
+            case 405:
+                ErrorMessage="Method Not Allowed";
+                break;
             case 408:
                 ErrorMessage="Request Timeout";
                 break;
@@ -420,46 +423,37 @@ public class serverThread extends Thread {
         else
             Params = postContent[4];
    
-        PARAMS = decodeParameters(Params);
+        PARAMS = decode(Params);
         CONTENT_LENGTH = ContentLength;
         FROM = From;
         USER_AGENT = UserAgent;
 
-        System.out.println("\n");
-        System.out.println(From);
-        System.out.println(UserAgent);
-        System.out.println(ContentType);
-        System.out.println(ContentLength);
-        System.out.println(decodeParameters(Params));
-
-
-        // TODO: Need to asign enviornment variables -> Send proper payload -> Decode Params
         return true;
     }
 
 
-    private String decodeParameters(String payload){
+    private String decode(String param){
         String decoded = "";
         boolean skip = false;
 
-        for (int i = 0; i < payload.length(); i++) {
+        for (int i = 0; i < param.length(); i++) {
             // skips the next character, as to not overlap
             if(skip){
                 skip = false;
                 continue;
             }
-            if(i == payload.length() - 1){
-                decoded += payload.charAt(i);
+            if(i == param.length() - 1){
+                decoded += param.charAt(i);
                 return decoded;
             }
             // for each char in the payload, add '!' before each reserved character
-            if(payload.charAt(i) == '!'){
-                decoded += payload.charAt(i+1);
+            if(param.charAt(i) == '!'){
+                decoded += param.charAt(i+1);
                 skip = true;
             }
             // if normal character, just append to output
             else{
-                decoded += payload.charAt(i);
+                decoded += param.charAt(i);
             }
         }
 
