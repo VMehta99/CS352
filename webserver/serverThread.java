@@ -25,6 +25,8 @@ public class serverThread extends Thread {
     String CONTENT_LENGTH;
     String FROM;
     String USER_AGENT;
+    byte[] cgiOutput;
+    
 
     public serverThread(Socket client)
     {
@@ -350,13 +352,13 @@ public class serverThread extends Thread {
         if(code == 304)
             message = String.format("HTTP/1.0 %s %s", 304, "Not Modified");
 
-        try{
-            outToClient.writeBytes(message + "\r\n" + createHeader(file) + "\r\n" + "\r\n") ;
-            outToClient.flush();
+        // try{
+        //     outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
+        //     outToClient.flush();
 
-        }catch(IOException e){
-            System.out.printf("Error sending response to client");
-        }
+        // }catch(IOException e){
+        //     System.out.printf("Error sending response to client");
+        // }
 
 
         ProcessBuilder pbBuilder = new ProcessBuilder(file);
@@ -400,17 +402,58 @@ public class serverThread extends Thread {
                     // read inputstream and save as string
                     while((cgiString = cgiBufferedReader.readLine()) != null){  
                         stringBuffer.append(cgiString);
+                        stringBuffer.append(System.getProperty("line.separator"));
                     }
                     cgiString = stringBuffer.toString();
+<<<<<<< HEAD
                     cgiInputStream.close();
                   
                     
                     //convert output from string to bytes to write payload
                     byte[] cgiOutput = cgiString.getBytes(); 
+=======
+                    System.out.println("string is: " + (stringBuffer.toString()));
+                    // if((stringBuffer.toString()).equals("")){
+                    //     sendErrorCode(204);
+                    //     return;
+                    // }
+                    cgiInputStream.close();
+                    cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
+                    System.out.println("byte[] is length is: " + cgiOutput.length);
+                    
+                    try{
+                        outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
+                        outToClient.flush();
+            
+                    }catch(IOException e){
+                        System.out.printf("Error sending response to client");
+                    }
+
+                    // try {
+                    //     //CONTENT_LENGTH = Integer.toString(cgiOutput.length);
+                        
+                    //     env.put("CONTENT_LENGTH", CONTENT_LENGTH);
+                    //     env.put("SCRIPT_NAME", "." + file);
+                    //     env.put("HTTP_FROM", FROM);
+                    //     env.put("HTTP_USER_AGENT", USER_AGENT);
+                    //     System.out.println("content length is: " + CONTENT_LENGTH/*createHeader(file, "POST")*/);
+                    //     System.out.println("Http from is: " + FROM);
+                    //     System.out.println("Http user agent is: " + USER_AGENT);
+                    // } catch (Exception e) {
+                    //     sendErrorCode(500);
+                    // }
+>>>>>>> 325ecf858db9e99784980d1dd39afcf10a900d44
                     outToClient.write(cgiOutput);
                     outToClient.flush();
                 }
                 else{
+                    try{
+                        outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
+                        outToClient.flush();
+            
+                    }catch(IOException e){
+                        System.out.printf("Error sending response to client");
+                    }
                     File new_file = new File("." + file);
                     byte[] fileContent = Files.readAllBytes(new_file.toPath());
                     outToClient.write(fileContent);
@@ -541,7 +584,8 @@ public class serverThread extends Thread {
             [CRLF]
     */
 
-    private String createHeader(String fileName){
+    private String createHeader(String fileName, String method){
+        
 
         String header = "", extension, MIME = "";
         
@@ -575,12 +619,24 @@ public class serverThread extends Thread {
         else {
             MIME = "application/octet-stream";
         }
-        header += "Content-Type: " + MIME + "\r\n";
+        // header += "Content-Type: " + MIME + "\r\n";
 
 
         File new_file = new File("." + fileName);
         long fileSize = new_file.length();
+<<<<<<< HEAD
         header += "Content-Length: " + fileSize + "\r\n";
+=======
+        if(method.equals("GET") || method.equals("HEAD")){
+            header += "Content-Type: " + MIME + "\r\n";
+            header += "Content-Length: " + fileSize + "\r\n";
+        }
+        else if(method.equals("POST")){
+            header += "Content-Length: " + Integer.toString(cgiOutput.length) + "\r\n";
+            header += "Content-Type: " + MIME + "\r\n";
+        }
+
+>>>>>>> 325ecf858db9e99784980d1dd39afcf10a900d44
         SimpleDateFormat dateSimpleFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
         dateSimpleFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 
@@ -591,10 +647,10 @@ public class serverThread extends Thread {
         long currentTime = System.currentTimeMillis();;
         Date currentDate = new Date(currentTime + 31540000000L);
         Calendar cal = Calendar.getInstance();
-		cal.add(Calendar.HOUR, 24);
+        cal.add(Calendar.HOUR, 24);
         header += "Expires: " + dateSimpleFormat.format(cal.getTime());
 
-        return header;
+        return header;      
     }
 
     /*
