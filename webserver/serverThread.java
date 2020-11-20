@@ -1,15 +1,5 @@
 import java.io.*;
 import java.io.FileNotFoundException;
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.ByteArrayOutputStream;
-import java.lang.Process;
-import java.lang.ProcessBuilder;
-import java.lang.StringBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,6 +7,13 @@ import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.HashMap;
+import java.lang.*;
+
+
+
+// TODO: 
+// 1. Implement 405, 403, 204 errors for cgi files
+// 2. Fix payload for testcase 26-28
 
 
 public class serverThread extends Thread {
@@ -24,13 +21,17 @@ public class serverThread extends Thread {
     
     BufferedReader inFromClient;
     DataOutputStream outToClient;
+    String PARAMS;
+    String CONTENT_LENGTH;
+    String FROM;
+    String USER_AGENT;
 
     public serverThread(Socket client)
     {
         this.client = client;
 
         try{
-            client.setSoTimeout(5000);
+            client.setSoTimeout(1000);
         }
         catch (SocketException s){
             sendErrorCode(408);
@@ -55,10 +56,10 @@ public class serverThread extends Thread {
 
 
         //if cant readline, 500
+        // TODO: CHANGE TO 5000
         try {
-            this.client.setSoTimeout(5000); // wait for 5 sec
+            this.client.setSoTimeout(1000); // wait for 5 sec
             request = inFromClient.readLine();
-            System.out.println(request);
         } catch (SocketTimeoutException e){
             try{
                 byte[] byteMessage = "HTTP/1.0 408 Request Timeout".getBytes();
@@ -95,17 +96,15 @@ public class serverThread extends Thread {
 
         //each part of the request:
         String method = requestParts[0];
+        String file = requestParts[1];
+        String modified = ""; 
         
         if(method.equals("POST")){
-            handlePost();
+            if(!handlePost())
+                return;
         }
-        String file = requestParts[1];
-<<<<<<< HEAD
-       
-=======
-        // System.out.println("file we need is: " + file); //filename and path
->>>>>>> 7aec3ccafaa6f367aceb25c0eef3586dbd76601b
-        String modified = ""; 
+
+        
 
 
         if(!isValidMethod(requestParts[0]))
@@ -149,7 +148,7 @@ public class serverThread extends Thread {
         }
         if(is304)
             sendErrorCode(304);
-        //check content-type of POST for cgi
+
         String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
         if(method.equals("POST")){
             if(!(extension.equals("cgi"))){
@@ -203,6 +202,7 @@ public class serverThread extends Thread {
                     sendErrorCode(403);
                     return false;
                 }
+
             }
             else{
                 sendErrorCode(404);
@@ -248,9 +248,6 @@ public class serverThread extends Thread {
             case 404:
                 ErrorMessage="Not Found";
                 break;
-            case 405:
-                ErrorMessage="Method Not Allowed";
-                break;
             case 408:
                 ErrorMessage="Request Timeout";
                 break;
@@ -287,8 +284,7 @@ public class serverThread extends Thread {
 
 
     //HANDLES 200 and 304 REQUESTS ONLY -> Gets called when all checks were validated.
-    public void handleRequest(String method,String file, int code)
-    {   
+    public void handleRequest(String method,String file, int code){   
         String message="";
         if(code ==200)
             message = String.format("HTTP/1.0 %s %s", 200, "OK");
@@ -303,15 +299,30 @@ public class serverThread extends Thread {
             System.out.printf("Error sending response to client");
         }
 
+
+        ProcessBuilder pbBuilder = new ProcessBuilder(file);
+        Map<String, String> env = pbBuilder.environment();
         // "file" is a string from the client request. 
         if((method.equals("GET") || method.equals("POST")) && code==200){
             try{
                 String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
                 // System.out.println("extension: " + extension);
+                    System.out.println(file);
+
+                    // set ProcessBuilder environment variables
+                    try {
+                        env.put("CONTENT_LENGTH", CONTENT_LENGTH);
+                        env.put("SCRIPT_NAME", "." + file);
+                        env.put("HTTP_FROM", FROM);
+                        env.put("HTTP_USER_AGENT", USER_AGENT);
+                    } catch (Exception e) {
+                        sendErrorCode(500);
+                    }
+            
                 if(method.equals("POST")){
                     ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
                     Process cgiProcess = cgiScriptString.start();
-                    String parameterString = "x=1&y=2";                //INSERT PARAMATER
+                    String parameterString = PARAMS;                //INSERT PARAMATER
                     byte[] parameterByte = parameterString.getBytes(); //convert parameters to bytes to write
                     OutputStream cgiOutputStream = cgiProcess.getOutputStream();
                     cgiOutputStream.write(parameterByte);
@@ -339,7 +350,7 @@ public class serverThread extends Thread {
                 }
             }
             catch(IOException e){
-                System.out.println(e.getMessage());
+                System.out.println("it broke");
             }
 
 
@@ -347,7 +358,9 @@ public class serverThread extends Thread {
         close();
     }
 
-    public void handlePost(){
+
+    // Return false if bad post request -> No Content-Length or No Content-Type
+    public boolean handlePost(){
         StringBuffer stringBuffer = new StringBuffer("");
         // for reading one line
         String line = null;
@@ -356,6 +369,8 @@ public class serverThread extends Thread {
             while ((line = inFromClient.readLine()) != null) {
                 // keep appending last line read to buffer
                 String delim = "\r\n";
+
+                // helps format for the params. 
                 if(line.equals("")){
                     delim = "";
                 }
@@ -365,31 +380,91 @@ public class serverThread extends Thread {
         catch(IOException e){
             System.out.println("");
         }
+
+
+    // Splits stringBuffer by \r\n.
         String [] postContent = stringBuffer.toString().split("\r\n");
         String Params;
+
+   
         
-    //    TODO: Need to work on edge cases: 
+    //    EDGE CASES:
     //      1. If no params
     //      2. If no content length -> 411 error
-    //      3. if no Content Type
+    //      3. if no Content Type -> 500 error
         
         String From = postContent[0].split(":")[1].trim();
         String UserAgent = postContent[1].split(":")[1].trim();
-        String ContentType = postContent[2].split(":")[1].trim();
+        
+
+        // Edge 3
+        String ContentType = postContent[2];
+        if(!ContentType.contains("Content-Type")){
+            sendErrorCode(500);
+            return false;
+        }
+        ContentType = postContent[2].split(":")[1].trim();
+
+
+        // Edge 2
         String ContentLength = postContent[3];
-        Params = postContent[4];
+        if(!ContentLength.contains("Content-Length")){
+            sendErrorCode(411);
+            return false;
+        }
+        ContentLength = postContent[3].split(":")[1].trim();
+        
+        // Edge 1
+        if(postContent.length==4)
+            Params = "";
+        else
+            Params = postContent[4];
    
+        PARAMS = decodeParameters(Params);
+        CONTENT_LENGTH = ContentLength;
+        FROM = From;
+        USER_AGENT = UserAgent;
 
         System.out.println("\n");
         System.out.println(From);
         System.out.println(UserAgent);
         System.out.println(ContentType);
         System.out.println(ContentLength);
-        System.out.println(Params);
-        // String[] str = stringBuffer.toString().split("||");
+        System.out.println(decodeParameters(Params));
+
+
+        // TODO: Need to asign enviornment variables -> Send proper payload -> Decode Params
+        return true;
     }
 
 
+    private String decodeParameters(String payload){
+        String decoded = "";
+        boolean skip = false;
+
+        for (int i = 0; i < payload.length(); i++) {
+            // skips the next character, as to not overlap
+            if(skip){
+                skip = false;
+                continue;
+            }
+            if(i == payload.length() - 1){
+                decoded += payload.charAt(i);
+                return decoded;
+            }
+            // for each char in the payload, add '!' before each reserved character
+            if(payload.charAt(i) == '!'){
+                decoded += payload.charAt(i+1);
+                skip = true;
+            }
+            // if normal character, just append to output
+            else{
+                decoded += payload.charAt(i);
+            }
+        }
+
+        return decoded;
+    }
 
 
     // Assembles the header
@@ -424,7 +499,7 @@ public class serverThread extends Thread {
         else if (extension.equals("txt")){
             MIME = "text/plain";
         }
-        else if (extension.equals("html")){
+        else if (extension.equals("html") || extension.equals("cgi")){
             MIME = "text/html";
         }
         else if (extension.equals("gif")){
