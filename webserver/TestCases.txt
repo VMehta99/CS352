@@ -1,0 +1,360 @@
+GET /index.html
+
+------------
+HTTP/1.0 400 Bad Request
+
+============
+KICK /index.html HTTP/1.0
+
+------------
+HTTP/1.0 400 Bad Request
+
+============
+GET /i n d e x . h t m l HTTP/1.0
+
+------------
+HTTP/1.0 400 Bad Request
+
+============
+get /index.html HTTP/1.0
+
+------------
+HTTP/1.0 400 Bad Request
+
+============
+GET /index.html HTTP/1.1
+
+------------
+HTTP/1.0 505 HTTP Version Not Supported
+
+============
+PUT /index.html HTTP/1.0
+
+------------
+HTTP/1.0 501 Not Implemented
+
+============
+DELETE /index.html HTTP/1.0
+
+------------
+HTTP/1.0 501 Not Implemented
+
+============
+LINK /index.html HTTP/1.0
+
+------------
+HTTP/1.0 501 Not Implemented
+
+============
+UNLINK /index.html HTTP/1.0
+
+------------
+HTTP/1.0 501 Not Implemented
+
+============
+GET /doc_root/top_secret.txt HTTP/1.0
+
+------------
+HTTP/1.0 403 Forbidden
+
+============
+GET /missing.zip HTTP/1.0
+
+------------
+HTTP/1.0 404 Not Found
+
+============
+GET /doc_root/index.html HTTP/1.0
+
+------------
+HTTP/1.0 200 OK
+Content-Type: text/html
+Content-Length: 3191
+Last-Modified: Wed, 15 Jul 2015 04:14:40 GMT
+Content-Encoding: identity
+
+48bd1fcde6d55334a0633ac52772b9267da0790bd154eaaa90b313ec0c0e5511
+============
+HEAD /doc_root/index.html HTTP/1.0
+
+------------
+HTTP/1.0 200 OK
+Content-Type: text/html
+Content-Length: 3191
+Last-Modified: Wed, 15 Jul 2015 04:14:40 GMT
+Content-Encoding: identity
+
+============
+GET /doc_root/resources/google.png HTTP/1.0
+
+------------
+HTTP/1.0 200 OK
+Content-Type: image/png
+Content-Length: 14022
+Last-Modified: Wed, 09 Oct 2013 01:35:39 GMT
+Content-Encoding: identity
+
+464a1654fa85848684d56d48c6d5385b92f55e36791e9d55e09bf7f23281604e
+============
+GET /doc_root/resources/bitcoin.pdf HTTP/1.0
+If-Modified-Since: Tue, 14 Jul 2015 18:00:00 GMT
+
+------------
+HTTP/1.0 304 Not Modified
+
+============
+GET /doc_root/resources/ls HTTP/1.0
+If-Modified-Since: Tue, 14 Jul 2015 18:00:00 GMT
+
+------------
+HTTP/1.0 200 OK
+Content-Type: application/octet-stream
+Content-Length: 34640
+Last-Modified: Wed, 15 Jul 2015 04:53:48 GMT
+Content-Encoding: identity
+
+482c752811c90d450fe46c04aa29ad588bbd1c03d79fc16cf6ef0a7175bd5615
+============
+GET /doc_root/resources/bitcoin.pdf HTTP/1.0
+If-Modified-Since: foobar 30000
+
+------------
+HTTP/1.0 200 OK
+Content-Type: application/pdf
+Content-Length: 184292
+Last-Modified: Tue, 14 Jul 2015 14:13:49 GMT
+Content-Encoding: identity
+
+b1674191a88ec5cdd733e4240a81803105dc412d6c6708d53ab94fc248f4f553
+============
+HEAD /doc_root/resources/bitcoin.pdf HTTP/1.0
+If-Modified-Since: Tue, 14 Jul 2015 18:00:00 GMT
+
+------------
+HTTP/1.0 200 OK
+Content-Type: application/pdf
+Content-Length: 184292
+Last-Modified: Tue, 14 Jul 2015 14:13:49 GMT
+Content-Encoding: identity
+
+============
+GET /env.cgi HTTP/1.0
+
+------------
+HTTP/1.0 404 Not Found
+
+============
+POST /cgi_bin/env.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+
+File=./doc_root/index.html&cost=0
+------------
+HTTP/1.0 411 Length Required
+
+============
+POST /cgi_bin/env.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Length: 14
+
+File=./doc_root/index.html&cost=0
+------------
+HTTP/1.0 500 Internal Server Error
+
+============
+POST /cgi_bin/env.cig HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 14
+
+File=./doc_root/index.html&cost=0
+------------
+HTTP/1.0 405 Method Not Allowed
+
+============
+POST /cgi_bin/forbidden.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 4
+
+x=1
+------------
+HTTP/1.0 403 Forbidden
+
+============
+POST /cgi_bin/upcase.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 4
+
+x=1
+------------
+HTTP/1.0 200 OK
+Content-Length: 2
+Content-Type: text/html
+
+X
+============
+POST /cgi_bin/upcase.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 7
+
+x=1&y=2
+------------
+HTTP/1.0 200 OK
+Content-Length: 4
+Content-Type: text/html
+
+X
+Y
+============
+POST /cgi_bin/basic.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+
+------------
+HTTP/1.0 200 OK
+Content-Length: 379
+Content-Type: text/html
+
+Content-Type: text/html; charset=ISO-8859-1<!DOCTYPE html	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"	 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US"><head><title>Basic</title><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" /></head><body></body></html>
+============
+POST /cgi_bin/env.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+
+------------
+HTTP/1.0 200 OK
+Content-Length: 101
+Content-Type: text/html
+
+CONTENT_LENGTH = 0
+SCRIPT_NAME = /cgi_bin/env.cgi
+HTTP_FROM = me@mycomputer
+HTTP_USER_AGENT = telnet
+============
+POST /cgi_bin/env.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 4
+
+x=1
+------------
+HTTP/1.0 200 OK
+Content-Length: 101
+Content-Type: text/html
+
+CONTENT_LENGTH = 4
+SCRIPT_NAME = /cgi_bin/env.cgi
+HTTP_FROM = me@mycomputer
+HTTP_USER_AGENT = telnet
+============
+POST /cgi_bin/param.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 23
+
+greeting=hello&name=you
+------------
+HTTP/1.0 200 OK
+Content-Length: 24
+Content-Type: text/html
+
+greeting=hello
+name=you
+============
+POST /cgi_bin/param.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 4
+
+c=!
+------------
+HTTP/1.0 200 OK
+Content-Length: 4
+Content-Type: text/html
+
+c=!
+============
+POST /cgi_bin/param.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 14
+
+c=!&d=[a,b]
+------------
+HTTP/1.0 200 OK
+Content-Length: 12
+Content-Type: text/html
+
+c=!
+d=[a,b]
+============
+POST /cgi_bin/param.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 36
+
+file=../doc_root/index.html&line=3
+------------
+HTTP/1.0 200 OK
+Content-Length: 35
+Content-Type: text/html
+
+file=../doc_root/index.html
+line=3
+============
+POST /cgi_bin/print.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 35
+
+file=./doc_root/index.html&line=3
+------------
+HTTP/1.0 200 OK
+Content-Length: 44
+Content-Type: text/html
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+============
+POST /cgi_bin/print.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 37
+
+file=./doc_root/index.html&line=100
+------------
+HTTP/1.0 200 OK
+Content-Length: 92
+Content-Type: text/html
+
+Sorry, I think the line number you entered is greater than the number of lines in the file.
+============
+POST /cgi_bin/exec.cgi HTTP/1.0
+From: me@mycomputer
+User-Agent: telnet
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+
+------------
+HTTP/1.0 204 No Content
+
+============
