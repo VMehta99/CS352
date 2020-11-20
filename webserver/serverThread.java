@@ -1,5 +1,15 @@
 import java.io.*;
 import java.io.FileNotFoundException;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
+import java.lang.Process;
+import java.lang.ProcessBuilder;
+import java.lang.StringBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,6 +54,7 @@ public class serverThread extends Thread {
         try {
             this.client.setSoTimeout(5000); // wait for 5 sec
             request = inFromClient.readLine();
+            System.out.println(request);
         } catch (SocketTimeoutException e){
             try{
                 byte[] byteMessage = "HTTP/1.0 408 Request Timeout".getBytes();
@@ -77,6 +88,7 @@ public class serverThread extends Thread {
         //each part of the request:
         String method = requestParts[0];
         String file = requestParts[1];
+        // System.out.println("file we need is: " + file); //filename and path
         String modified = ""; 
 
         if(!isValidMethod(requestParts[0]))
@@ -120,6 +132,14 @@ public class serverThread extends Thread {
         }
         if(is304)
             sendErrorCode(304);
+        //check content-type of POST for cgi
+        String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
+        if(method.equals("POST")){
+            if(!(extension.equals("cgi"))){
+                sendErrorCode(405);
+                return;
+            }
+        }
         //LAST CHECK
         if(isValidFile(file))
             handleRequest(method,file,200);
@@ -210,6 +230,9 @@ public class serverThread extends Thread {
             case 404:
                 ErrorMessage="Not Found";
                 break;
+            case 405:
+                ErrorMessage="Method Not Allowed";
+                break;
             case 408:
                 ErrorMessage="Request Timeout";
                 break;
@@ -262,10 +285,37 @@ public class serverThread extends Thread {
         // "file" is a string from the client request. 
         if((method.equals("GET") || method.equals("POST")) && code==200){
             try{
-                File new_file = new File("." + file);
-                byte[] fileContent = Files.readAllBytes(new_file.toPath());
-                outToClient.write(fileContent);
-                outToClient.flush();
+                String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
+                // System.out.println("extension: " + extension);
+                if(method.equals("POST")){
+                    ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
+                    Process cgiProcess = cgiScriptString.start();
+                    String parameterString = "x=1&y=2";                //INSERT PARAMATER
+                    byte[] parameterByte = parameterString.getBytes(); //convert parameters to bytes to write
+                    OutputStream cgiOutputStream = cgiProcess.getOutputStream();
+                    cgiOutputStream.write(parameterByte);
+                    cgiOutputStream.close();
+                    InputStream cgiInputStream = cgiProcess.getInputStream();
+                    InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
+                    BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
+                    StringBuffer stringBuffer = new StringBuffer();
+                    String cgiString;
+                    while((cgiString = cgiBufferedReader.readLine()) != null){  // read inputstream and save as string
+                        stringBuffer.append(cgiString);
+                    }
+                    cgiString = stringBuffer.toString();
+                    //System.out.print(stringBuffer.toString());
+                    cgiInputStream.close();
+                    byte[] cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
+                    outToClient.write(cgiOutput);
+                    outToClient.flush();
+                }
+                else{
+                    File new_file = new File("." + file);
+                    byte[] fileContent = Files.readAllBytes(new_file.toPath());
+                    outToClient.write(fileContent);
+                    outToClient.flush();
+                }
             }
             catch(IOException e){
                 System.out.println("it broke");
