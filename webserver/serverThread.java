@@ -412,7 +412,6 @@ public class serverThread extends Thread {
                         System.out.printf("Error sending response to client");
                     }
 
-
                     outToClient.write(cgiOutput);
                     outToClient.flush();
                 }
