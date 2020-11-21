@@ -377,7 +377,7 @@ public class serverThread extends Thread {
                     // set enviornment variables
                     try {
                         env.put("CONTENT_LENGTH", CONTENT_LENGTH);
-                        env.put("SCRIPT_NAME", "." + file);
+                        env.put("SCRIPT_NAME", file);
                         env.put("HTTP_FROM", FROM);
                         env.put("HTTP_USER_AGENT", USER_AGENT);
                         //cgiScriptString.start();
@@ -404,7 +404,7 @@ public class serverThread extends Thread {
                         stringBuffer.append(System.getProperty("line.separator"));
                     }
                     cgiString = stringBuffer.toString();
-                    System.out.println("payload: " + cgiString);
+                    System.out.println(cgiString);
                     cgiInputStream.close();
                     cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
                     try{
@@ -503,10 +503,10 @@ public class serverThread extends Thread {
         else
             Params = postContent[4];
    
-        PARAMS = decode(Params);
-        CONTENT_LENGTH = ContentLength;
-        FROM = From;
-        USER_AGENT = UserAgent;
+        PARAMS = decode(Params).trim();
+        CONTENT_LENGTH = ContentLength.trim();
+        FROM = From.trim();
+        USER_AGENT = UserAgent.trim();
 
         return true;
     }
