@@ -21,6 +21,8 @@ public class serverThread extends Thread {
     
     BufferedReader inFromClient;
     DataOutputStream outToClient;
+
+    // Global Variables -> Enviornment variables
     String PARAMS;
     String CONTENT_LENGTH;
     String FROM;
@@ -57,10 +59,8 @@ public class serverThread extends Thread {
 
 
 
-        //if cant readline, 500
-        // TODO: CHANGE TO 5000
         try {
-            this.client.setSoTimeout(1000); // wait for 5 sec
+            this.client.setSoTimeout(5000); // wait for 5 sec
             request = inFromClient.readLine();
         } catch (SocketTimeoutException e){
             try{
@@ -83,10 +83,6 @@ public class serverThread extends Thread {
             return;
         }
 
-        // TODO: Make sure that all parts of post request are taken -> put them in enviornment variables
-
-        
-
         //Extract each part of the request
         requestParts = request.split(" ");
         
@@ -101,6 +97,7 @@ public class serverThread extends Thread {
         String file = requestParts[1];
         String modified = ""; 
         
+        // Post handler -> helps define error codes.
         if(method.equals("POST")){
             if(!handlePost())
                 return;
@@ -151,8 +148,10 @@ public class serverThread extends Thread {
         if(is304)
             sendErrorCode(304);
 
-        String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
+        //check extension for cgi
+        String extension = file.substring(file.lastIndexOf(".") + 1); 
         if(method.equals("POST")){
+            // If its a post and not .cgi -> return 405.
             if(!(extension.equals("cgi"))){
                 sendErrorCode(405);
                 return;
@@ -202,6 +201,8 @@ public class serverThread extends Thread {
         Path p = Paths.get("."+file);
             if(f.exists()) { 
                 if(Files.isReadable(p)){
+                    
+                    // Used for checking if the CGI can execute:
                     if(!f.canExecute() && extension.equals("cgi")){
                         sendErrorCode(403);
                         return false;
@@ -213,7 +214,6 @@ public class serverThread extends Thread {
                     sendErrorCode(403);
                     return false;
                 }
-
             }
             else{
                 sendErrorCode(404);
@@ -299,12 +299,11 @@ public class serverThread extends Thread {
     }
 
      public boolean verifyPayload(String file){
-    
-            //INSERT PARAMATER
+        // Parameter for verifying payload output
         String parameterString = PARAMS;  
      
 
-                    //convert parameters to bytes to write         
+        // Runs CGI File -> gets output and verifies output. 
         try{
             ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
             Process cgiProcess = cgiScriptString.start();
@@ -329,7 +328,7 @@ public class serverThread extends Thread {
             cgiInputStream.close();
         }
         catch(IOException e){
-            System.out.println("bug here");
+            System.out.println("");
         }
        
         
@@ -366,29 +365,28 @@ public class serverThread extends Thread {
 
         if((method.equals("GET") || method.equals("POST")) && code==200){
             try{
-                String extension = file.substring(file.lastIndexOf(".") + 1); //check extension for cgi
-                // System.out.println("extension: " + extension);
-                    System.out.println(file);
-                
+                //check extension for cgi
+                String extension = file.substring(file.lastIndexOf(".") + 1); 
             
                 if(method.equals("POST")){
                     ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
                     Map<String, String> env = cgiScriptString.environment();      
+                    
                     // set enviornment variables
                     try {
                         env.put("CONTENT_LENGTH", CONTENT_LENGTH);
                         env.put("SCRIPT_NAME", file);
                         env.put("HTTP_FROM", FROM);
                         env.put("HTTP_USER_AGENT", USER_AGENT);
-                        //cgiScriptString.start();
                     } catch (Exception e) {
                         sendErrorCode(500);
                     }
 
-                    //ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
                     Process cgiProcess = cgiScriptString.start();
-                    String parameterString = PARAMS;                //INSERT PARAMATER
-                    byte[] parameterByte = parameterString.getBytes(); //convert parameters to bytes to write
+                    //INSERT PARAMATER
+                    String parameterString = PARAMS;   
+                    //convert parameters to bytes to write             
+                    byte[] parameterByte = parameterString.getBytes(); 
 
                     OutputStream cgiOutputStream = cgiProcess.getOutputStream();
                     cgiOutputStream.write(parameterByte);
@@ -399,14 +397,18 @@ public class serverThread extends Thread {
                     BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
                     StringBuffer stringBuffer = new StringBuffer();
                     String cgiString;
-                    while((cgiString = cgiBufferedReader.readLine()) != null){  // read inputstream and save as string
+                    
+                    // read inputstream and save as string
+                    while((cgiString = cgiBufferedReader.readLine()) != null){  
                         stringBuffer.append(cgiString);
                         stringBuffer.append(System.getProperty("line.separator"));
                     }
                     cgiString = stringBuffer.toString();
                     System.out.println(cgiString);
                     cgiInputStream.close();
-                    cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
+                    
+                    //convert output from string to bytes to write payload
+                    cgiOutput = cgiString.getBytes(); 
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
                         outToClient.flush();
