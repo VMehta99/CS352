@@ -372,25 +372,28 @@ public class serverThread extends Thread {
                 
             
                 if(method.equals("POST")){
-                    ProcessBuilder pbBuilder = new ProcessBuilder(file);
-                    Map<String, String> env = pbBuilder.environment();      
+                    ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
+                    Map<String, String> env = cgiScriptString.environment();      
                     // set enviornment variables
                     try {
                         env.put("CONTENT_LENGTH", CONTENT_LENGTH);
                         env.put("SCRIPT_NAME", "." + file);
                         env.put("HTTP_FROM", FROM);
                         env.put("HTTP_USER_AGENT", USER_AGENT);
+                        //cgiScriptString.start();
                     } catch (Exception e) {
                         sendErrorCode(500);
                     }
 
-                    ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
+                    //ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
                     Process cgiProcess = cgiScriptString.start();
                     String parameterString = PARAMS;                //INSERT PARAMATER
                     byte[] parameterByte = parameterString.getBytes(); //convert parameters to bytes to write
+
                     OutputStream cgiOutputStream = cgiProcess.getOutputStream();
                     cgiOutputStream.write(parameterByte);
                     cgiOutputStream.close();
+
                     InputStream cgiInputStream = cgiProcess.getInputStream();
                     InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
                     BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
@@ -401,7 +404,7 @@ public class serverThread extends Thread {
                         stringBuffer.append(System.getProperty("line.separator"));
                     }
                     cgiString = stringBuffer.toString();
-                    System.out.println(cgiString);
+                    System.out.println("payload: " + cgiString);
                     cgiInputStream.close();
                     cgiOutput = cgiString.getBytes(); //convert output from string to bytes to write payload
                     try{
@@ -595,6 +598,7 @@ public class serverThread extends Thread {
 
         if(method.equals("POST")){
             header += "Content-Length: " + Integer.toString(cgiOutput.length) + "\r\n";
+            System.out.println("contentlength: " + cgiOutput.length);
             header += "Content-Type: " + MIME + "\r\n";
         }
 
