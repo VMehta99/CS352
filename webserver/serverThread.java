@@ -322,6 +322,8 @@ public class serverThread extends Thread {
                 stringBuffer.append(cgiString);
             }
             cgiString = stringBuffer.toString();
+
+            // CHECK: If the payload is null  -> false 
             if(cgiString.length()==0 || cgiString==null)
                 return false;
 
