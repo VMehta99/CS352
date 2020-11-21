@@ -35,7 +35,7 @@ public class serverThread extends Thread {
         this.client = client;
 
         try{
-            client.setSoTimeout(1000);
+            client.setSoTimeout(5000);
         }
         catch (SocketException s){
             sendErrorCode(408);
@@ -224,11 +224,14 @@ public class serverThread extends Thread {
     /*
     These are the error codes:
         200    OK
+        204    No Content
         304    Not Modified
         400    Bad Request
         403    Forbidden
         404    Not Found
+        405    Method Now Allowed
         408    Request Timeout
+        411    Length Required
         500    Internal Server Error
         501    Not Implemented
         503    Service Unavailable
@@ -385,15 +388,19 @@ public class serverThread extends Thread {
                     }
 
                     Process cgiProcess = cgiScriptString.start();
+
                     //INSERT PARAMATER
                     String parameterString = PARAMS;   
+
                     //convert parameters to bytes to write             
                     byte[] parameterByte = parameterString.getBytes(); 
 
+                    //put paramater into cgi and run
                     OutputStream cgiOutputStream = cgiProcess.getOutputStream();
                     cgiOutputStream.write(parameterByte);
                     cgiOutputStream.close();
 
+                    //obtain inputStream of cgi so it can be read with bufferedReader
                     InputStream cgiInputStream = cgiProcess.getInputStream();
                     InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
                     BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
@@ -409,7 +416,7 @@ public class serverThread extends Thread {
                     System.out.println(cgiString);
                     cgiInputStream.close();
                     
-                    //convert output from string to bytes to write payload
+                    //convert output from string to bytes and write header
                     cgiOutput = cgiString.getBytes(); 
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
@@ -419,10 +426,12 @@ public class serverThread extends Thread {
                         System.out.printf("Error sending response to client");
                     }
 
+                    //write payload
                     outToClient.write(cgiOutput);
                     outToClient.flush();
                 }
                 else if(method.equals("GET") || method.equals("HEAD")){
+                    //write header
                     try{
                         outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
                         outToClient.flush();
@@ -430,6 +439,7 @@ public class serverThread extends Thread {
                     }catch(IOException e){
                         System.out.printf("Error sending response to client");
                     }
+                    //write payload
                     File new_file = new File("." + file);
                     byte[] fileContent = Files.readAllBytes(new_file.toPath());
                     outToClient.write(fileContent);

@@ -7,7 +7,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.RejectedExecutionHandler;
 
 
-class PartialHTTP1Server {
+class HTTP1Server {
     public static void main(String[]args) throws Exception{ 
         
         if (args.length < 1) return;
