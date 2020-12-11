@@ -1,8 +1,10 @@
 // App.java
 package com.github.username;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.Inet4Address;
+import java.util.*;
 
 import com.sun.jna.Platform;
 
@@ -18,10 +20,12 @@ import org.pcap4j.core.PcapNetworkInterface.PromiscuousMode;
 import org.pcap4j.core.Pcaps;
 import org.pcap4j.packet.Packet;
 import org.pcap4j.util.NifSelector;
+import org.pcap4j.packet.IcmpV4CommonPacket;
 import org.pcap4j.packet.IpV4Packet;
+import org.pcap4j.packet.IpV4Packet.IpV4Header;
 import org.pcap4j.packet.TcpPacket;
+import org.pcap4j.packet.TcpPacket.TcpHeader;
 import org.pcap4j.packet.UdpPacket;
-
 
 public class App {
 
@@ -256,3 +260,11 @@ public class App {
         handle.close();
     }
 }
+
+// class TCPFlow(String sourceIP, int sourcePort, String DestinationIP, int DestinationPort)
+// 	{
+// 		this.sourceIP = sourceIP;
+// 		this.sourcePort = sourcePort;
+// 		this.DestinationIP = DestinationIP;
+// 		this.DestinationPort = DestinationPort;
+// 	}
