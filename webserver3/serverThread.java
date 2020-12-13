@@ -3,6 +3,7 @@ import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -12,8 +13,8 @@ import java.lang.*;
 
 
 // TODO: 
-// 1. Implement 405, 403, 204 errors for cgi files
-// 2. Fix payload for testcase 26-28
+//check to see if "Cookie" in header
+// if
 
 
 public class serverThread extends Thread {
@@ -57,9 +58,7 @@ public class serverThread extends Thread {
         String request;
         String[] requestParts;
 
-
-
-        try {
+       try {
             this.client.setSoTimeout(5000); // wait for 5 sec
             request = inFromClient.readLine();
         } catch (SocketTimeoutException e){
@@ -83,9 +82,29 @@ public class serverThread extends Thread {
             return;
         }
 
-        //Extract each part of the request
+        StringBuffer stringBuffer = new StringBuffer("");
+        // for reading one line
+        String line = null;
+        // keep reading till readLine returns null
+        try{
+            while ((line = inFromClient.readLine()) != null) {
+                // keep appending last line read to buffer
+                String delim = "\r\n";
+
+                // helps format for the params. 
+                if(line.equals("")){
+                    delim = "";
+                }
+                stringBuffer.append(line + delim);
+            }
+        }
+        catch(IOException e){
+            System.out.println("");
+        }
+    
+
         requestParts = request.split(" ");
-        
+
         //If the request does not contain all relevant parts, 400 Bad Request
         if(requestParts.length != 3){
             sendErrorCode(400);
@@ -95,74 +114,70 @@ public class serverThread extends Thread {
         //each part of the request:
         String method = requestParts[0];
         String file = requestParts[1];
-        String modified = ""; 
+
+        if(file.equals("/"))
+            file="./index.html";
+        else   
+            file="."+file;
         
-        // Post handler -> helps define error codes.
-        if(method.equals("POST")){
-            if(!handlePost())
-                return;
-        }
-
-        
-
-
-        if(!isValidMethod(requestParts[0]))
-            return;
-
-        //verify the version: if not 1.0, 505 
-        String version = requestParts[2].split("/")[1];
-        if(!version.equals("1.0")){
-            sendErrorCode(505);
-            return;
-        }
-        
-        try{
-            if(inFromClient.ready())
-            modified = inFromClient.readLine();
-        }catch(IOException e){
-            sendErrorCode(500);
-            return;
-        }
-        boolean is304 = false;
-        Date modifiedDate = null;
-
-
-        //This segment is used to compare the IF-Modified-By field in the request. 
-        if(!modified.trim().equals("")){
-            modified = modified.substring(modified.indexOf(":") + 2);
-            try{
-                modifiedDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'").parse(modified);
-                long requestTime = modifiedDate.getTime();
-
-                File new_file = new File("." + file);
-                long fileTime = new_file.lastModified();
+        //FIND COOKIE in header
+        String CookieVal = "";
+        String [] postContent = stringBuffer.toString().split("\r\n");
+        if(postContent.length==4){
+            if(postContent[3].contains("Cookie")){
                 
-                //convert times to long and compare. 
-                if(requestTime>fileTime && !method.equals("HEAD"))
-                    is304=true;
-            }
-            catch(Exception e){
-                is304 =false;
+                // value of Cookie in header:
+                CookieVal = postContent[3].split(":")[1].trim();
+                
+                // Validates Cookie -> if valid -> change value in index_seen.html -> set file to index_seen.html
+                if(isValidCookie(CookieVal)){
+                    setLastSeen(CookieVal.split("=")[1]);
+                    file = "./index_seen.html";
+                }
+                else{
+                    sendErrorCode(500);
+                    return;
+                }
             }
         }
-        if(is304)
-            sendErrorCode(304);
+        //Checks to see if request type is valid
+       if(!isValidMethod(requestParts[0]))
+            return;
 
-        //check extension for cgi
-        String extension = file.substring(file.lastIndexOf(".") + 1); 
-        if(method.equals("POST")){
-            // If its a post and not .cgi -> return 405.
-            if(!(extension.equals("cgi"))){
-                sendErrorCode(405);
-                return;
-            }
-        }
-        //LAST CHECK
+        System.out.println(request);
+        System.out.println(stringBuffer.toString());
+        
+
+        //checks to see if ./index.html exists -> handles the request and sends
         if(isValidFile(file))
             handleRequest(method,file,200);
+
+        return;
+        
     }
 
-    
+    // TODO:
+    public boolean isValidCookie(String CookieVal){
+
+        // WRITE CODE TO VALIDATE COOKIE
+        
+        // IF the cookie date is properly formated -> year-month-day hours:min:secs AND 
+            // IF the is titled "lasttime"
+                // return true
+        // ELSE
+            // return false
+
+
+        return true;
+
+    }
+
+    // TODO:
+    public void setLastSeen(String value){
+        // WRITE CODE TO SET VALUES IN INDEX_SEEN.HTML
+
+        // TBH I have no idea how to do this.
+    }
 
     //Check each type of method
     public boolean isValidMethod(String method){
@@ -193,21 +208,10 @@ public class serverThread extends Thread {
 
     // Check if the file is valid. 403 for unreadable, 404 for not found
     public boolean isValidFile(String file){
-
-        String extension = file.substring(file.lastIndexOf(".") + 1); 
-
-
-        File f = new File("."+file);
-        Path p = Paths.get("."+file);
+        File f = new File(file);
+        Path p = Paths.get(file);
             if(f.exists()) { 
                 if(Files.isReadable(p)){
-                    
-                    // Used for checking if the CGI can execute:
-                    if(!f.canExecute() && extension.equals("cgi")){
-                        sendErrorCode(403);
-                        return false;
-                    }
-                
                     return true;
                 }
                 else{
@@ -224,14 +228,11 @@ public class serverThread extends Thread {
     /*
     These are the error codes:
         200    OK
-        204    No Content
         304    Not Modified
         400    Bad Request
         403    Forbidden
         404    Not Found
-        405    Method Now Allowed
         408    Request Timeout
-        411    Length Required
         500    Internal Server Error
         501    Not Implemented
         503    Service Unavailable
@@ -240,6 +241,7 @@ public class serverThread extends Thread {
         Function should take in a codet and print its corresponding message:
         FORMAT:  
            - String message = String.format("HTTP/1.0 %s %s", code, ErrorMessage);
+
     */
     public void sendErrorCode(int code)
     {
@@ -249,9 +251,6 @@ public class serverThread extends Thread {
         switch(code){
             case 200:
                 ErrorMessage="OK";
-                break;
-            case 204:
-                ErrorMessage="No Content";
                 break;
             case 304:
                 ErrorMessage="Not Modified" + "\r\n" + "Expires: " + next_year ;
@@ -265,14 +264,8 @@ public class serverThread extends Thread {
             case 404:
                 ErrorMessage="Not Found";
                 break;
-            case 405:
-                ErrorMessage="Method Not Allowed";
-                break;
             case 408:
                 ErrorMessage="Request Timeout";
-                break;
-            case 411:
-                ErrorMessage="Length Required";
                 break;
             case 500:
                 ErrorMessage="Internal Server Error";
@@ -296,262 +289,42 @@ public class serverThread extends Thread {
             outToClient.flush();
 
         }catch(IOException e){
-            System.out.println(e.getMessage());
+            System.out.printf("Error sending response to CLIENT");
         }
         close();
-    }
-
-     public boolean verifyPayload(String file){
-        // Parameter for verifying payload output
-        String parameterString = PARAMS;  
-     
-
-        // Runs CGI File -> gets output and verifies output. 
-        try{
-            ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
-            Process cgiProcess = cgiScriptString.start();
-            byte[] parameterByte = parameterString.getBytes(); 
-            OutputStream cgiOutputStream = cgiProcess.getOutputStream();
-            cgiOutputStream.write(parameterByte);
-            cgiOutputStream.close();
-            InputStream cgiInputStream = cgiProcess.getInputStream();
-            InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
-            BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
-            StringBuffer stringBuffer = new StringBuffer();
-            String cgiString;
-
-            // read inputstream and save as string
-            while((cgiString = cgiBufferedReader.readLine()) != null){  
-                stringBuffer.append(cgiString);
-            }
-            cgiString = stringBuffer.toString();
-
-            // CHECK: If the payload is null  -> false 
-            if(cgiString.length()==0 || cgiString==null)
-                return false;
-
-            cgiInputStream.close();
-        }
-        catch(IOException e){
-            System.out.println("");
-        }
-       
-        
-        return true;
-
     }
 
 
 
     //HANDLES 200 and 304 REQUESTS ONLY -> Gets called when all checks were validated.
-    public void handleRequest(String method,String file, int code){   
-
-        if(method.equals("POST") && !verifyPayload(file)){
-            sendErrorCode(204);
-            return;
-        }
-
+    public void handleRequest(String method,String file, int code)
+    {   
         String message="";
         if(code ==200)
             message = String.format("HTTP/1.0 %s %s", 200, "OK");
         if(code == 304)
             message = String.format("HTTP/1.0 %s %s", 304, "Not Modified");
 
-        if(method.equals("HEAD")){
             try{
-                outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
+                outToClient.writeBytes(message + "\r\n" + createHeader(file) + "\r\n" + "\r\n") ;
                 outToClient.flush();
 
             }catch(IOException e){
                 System.out.printf("Error sending response to client");
             }
-        }
 
-
-        if((method.equals("GET") || method.equals("POST")) && code==200){
+        // "file" is a string from the client request. 
             try{
-                //check extension for cgi
-                String extension = file.substring(file.lastIndexOf(".") + 1); 
-            
-                if(method.equals("POST")){
-                    ProcessBuilder cgiScriptString = new ProcessBuilder("." + file);
-                    Map<String, String> env = cgiScriptString.environment();      
-                    
-                    // set enviornment variables
-                    try {
-                        env.put("CONTENT_LENGTH", CONTENT_LENGTH);
-                        env.put("SCRIPT_NAME", file);
-                        env.put("HTTP_FROM", FROM);
-                        env.put("HTTP_USER_AGENT", USER_AGENT);
-                    } catch (Exception e) {
-                        sendErrorCode(500);
-                    }
-
-                    Process cgiProcess = cgiScriptString.start();
-
-                    //INSERT PARAMATER
-                    String parameterString = PARAMS;   
-
-                    //convert parameters to bytes to write             
-                    byte[] parameterByte = parameterString.getBytes(); 
-
-                    //put paramater into cgi and run
-                    OutputStream cgiOutputStream = cgiProcess.getOutputStream();
-                    cgiOutputStream.write(parameterByte);
-                    cgiOutputStream.close();
-
-                    //obtain inputStream of cgi so it can be read with bufferedReader
-                    InputStream cgiInputStream = cgiProcess.getInputStream();
-                    InputStreamReader cgiInputStreamReader = new InputStreamReader(cgiInputStream);
-                    BufferedReader cgiBufferedReader = new BufferedReader(cgiInputStreamReader);
-                    StringBuffer stringBuffer = new StringBuffer();
-                    String cgiString;
-                    
-                    // read inputstream and save as string
-                    while((cgiString = cgiBufferedReader.readLine()) != null){  
-                        stringBuffer.append(cgiString);
-                        stringBuffer.append(System.getProperty("line.separator"));
-                    }
-                    cgiString = stringBuffer.toString();
-                    System.out.println(cgiString);
-                    cgiInputStream.close();
-                    
-                    //convert output from string to bytes and write header
-                    cgiOutput = cgiString.getBytes(); 
-                    try{
-                        outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
-                        outToClient.flush();
-            
-                    }catch(IOException e){
-                        System.out.printf("Error sending response to client");
-                    }
-
-                    //write payload
-                    outToClient.write(cgiOutput);
-                    outToClient.flush();
-                }
-                else if(method.equals("GET") || method.equals("HEAD")){
-                    //write header
-                    try{
-                        outToClient.writeBytes(message + "\r\n" + createHeader(file, method) + "\r\n" + "\r\n");
-                        outToClient.flush();
-            
-                    }catch(IOException e){
-                        System.out.printf("Error sending response to client");
-                    }
-                    //write payload
-                    File new_file = new File("." + file);
-                    byte[] fileContent = Files.readAllBytes(new_file.toPath());
-                    outToClient.write(fileContent);
-                    outToClient.flush();
-                }
+                File new_file = new File(file);
+                byte[] fileContent = Files.readAllBytes(new_file.toPath());
+                outToClient.write(fileContent);
+                System.out.println("wrote to client");
+                outToClient.flush();
             }
             catch(IOException e){
                 System.out.println("it broke");
             }
-
-
-        }
         close();
-    }
-
-
-    // Return false if bad post request -> No Content-Length or No Content-Type
-    public boolean handlePost(){
-        StringBuffer stringBuffer = new StringBuffer("");
-        // for reading one line
-        String line = null;
-        // keep reading till readLine returns null
-        try{
-            while ((line = inFromClient.readLine()) != null) {
-                // keep appending last line read to buffer
-                String delim = "\r\n";
-
-                // helps format for the params. 
-                if(line.equals("")){
-                    delim = "";
-                }
-                stringBuffer.append(line + delim);
-            }
-        }
-        catch(IOException e){
-            System.out.println("");
-        }
-
-
-    // Splits stringBuffer by \r\n.
-        String [] postContent = stringBuffer.toString().split("\r\n");
-        String Params;
-
-   
-        
-    //    EDGE CASES:
-    //      1. If no params
-    //      2. If no content length -> 411 error
-    //      3. if no Content Type -> 500 error
-        
-        String From = postContent[0].split(":")[1].trim();
-        String UserAgent = postContent[1].split(":")[1].trim();
-        
-
-        // Edge 3
-        String ContentType = postContent[2];
-        if(!ContentType.contains("Content-Type")){
-            sendErrorCode(500);
-            return false;
-        }
-        ContentType = postContent[2].split(":")[1].trim();
-
-
-        // Edge 2
-        String ContentLength = postContent[3];
-        if(!ContentLength.contains("Content-Length")){
-            sendErrorCode(411);
-            return false;
-        }
-        ContentLength = postContent[3].split(":")[1].trim();
-        
-        // Edge 1
-        if(postContent.length==4)
-            Params = "";
-        else
-            Params = postContent[4];
-   
-        PARAMS = decode(Params).trim();
-        CONTENT_LENGTH = ContentLength.trim();
-        FROM = From.trim();
-        USER_AGENT = UserAgent.trim();
-
-        return true;
-    }
-
-
-    private String decode(String param){
-        String decoded = "";
-        boolean skip = false;
-
-        for (int i = 0; i < param.length(); i++) {
-            // skips the next character, as to not overlap
-            if(skip){
-                skip = false;
-                continue;
-            }
-            if(i == param.length() - 1){
-                decoded += param.charAt(i);
-                return decoded;
-            }
-            // for each char in the payload, add '!' before each reserved character
-            if(param.charAt(i) == '!'){
-                decoded += param.charAt(i+1);
-                skip = true;
-            }
-            // if normal character, just append to output
-            else{
-                decoded += param.charAt(i);
-            }
-        }
-
-        return decoded;
     }
 
 
@@ -568,8 +341,7 @@ public class serverThread extends Thread {
             [CRLF]
     */
 
-    private String createHeader(String fileName, String method){
-        
+    private String createHeader(String fileName){
 
         String header = "", extension, MIME = "";
         
@@ -588,7 +360,7 @@ public class serverThread extends Thread {
         else if (extension.equals("txt")){
             MIME = "text/plain";
         }
-        else if (extension.equals("html") || extension.equals("cgi")){
+        else if (extension.equals("html")){
             MIME = "text/html";
         }
         else if (extension.equals("gif")){
@@ -603,18 +375,12 @@ public class serverThread extends Thread {
         else {
             MIME = "application/octet-stream";
         }
-        File new_file = new File("." + fileName);
-        long fileSize = new_file.length();
-        if(method.equals("GET") || method.equals("HEAD")){
-            header += "Content-Type: " + MIME + "\r\n";
-            header += "Content-Length: " + fileSize + "\r\n";
-        }
+        header += "Content-Type: " + MIME + "\r\n";
 
-        if(method.equals("POST")){
-            header += "Content-Length: " + Integer.toString(cgiOutput.length) + "\r\n";
-            System.out.println("contentlength: " + cgiOutput.length);
-            header += "Content-Type: " + MIME + "\r\n";
-        }
+
+        File new_file = new File(fileName);
+        long fileSize = new_file.length();
+        header += "Content-Length: " + fileSize + "\r\n";
 
         SimpleDateFormat dateSimpleFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
         dateSimpleFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -623,12 +389,15 @@ public class serverThread extends Thread {
         header += "Content-Encoding: identity" + "\r\n";
         header += "Allow: GET, POST, HEAD" + "\r\n";
 
-        long currentTime = System.currentTimeMillis();;
-        Date currentDate = new Date(currentTime + 31540000000L);
+        long currentTime = System.currentTimeMillis();
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.HOUR, 24);
-        header += "Expires: " + dateSimpleFormat.format(cal.getTime());
+        header += "Expires: " + dateSimpleFormat.format(cal.getTime())+ "\r\n";
 
+        SimpleDateFormat cookieDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String formattedCurrentDate = cookieDateFormat.format(new Date(currentTime));
+        header += "Set-Cookie: lasttime=" + URLEncoder.encode(formattedCurrentDate,StandardCharsets.UTF_8);
+        
         return header;
     }
 
