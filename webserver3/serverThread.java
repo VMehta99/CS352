@@ -9,12 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.HashMap;
 import java.lang.*;
-
-
-
-// TODO: 
-//check to see if "Cookie" in header
-// if
+import java.text.ParseException;
 
 
 public class serverThread extends Thread {
@@ -120,6 +115,8 @@ public class serverThread extends Thread {
         else   
             file="."+file;
         
+       
+       
         //FIND COOKIE in header
         String CookieVal = "";
         String [] postContent = stringBuffer.toString().split("\r\n");
@@ -140,6 +137,8 @@ public class serverThread extends Thread {
                 }
             }
         }
+
+
         //Checks to see if request type is valid
        if(!isValidMethod(requestParts[0]))
             return;
@@ -156,26 +155,98 @@ public class serverThread extends Thread {
         
     }
 
-    // TODO:
     public boolean isValidCookie(String CookieVal){
 
-        // WRITE CODE TO VALIDATE COOKIE
-        
-        // IF the cookie date is properly formated -> year-month-day hours:min:secs AND 
-            // IF the is titled "lasttime"
-                // return true
-        // ELSE
-            // return false
+        boolean returnVal = false;
+        try{
+            String decoded = URLDecoder.decode(CookieVal, "UTF-8" );
+            if(decoded.split("=")[0].equals("lasttime"))
+                if(isValidDateFormat(decoded.split("=")[1].split(" ")[0]))
+                    if(isValidTime(decoded.split("=")[1].split(" ")[1]))
+                        returnVal = true;
+            else{
+                sendErrorCode(500);
+                returnVal = false;
+            }
 
+        }catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            sendErrorCode(500);
+            returnVal = false;
+        }
 
-        return true;
+        return returnVal;
 
     }
 
-    // TODO:
+    /*
+        @param value = DECODED date taken from the Cookie header
+        Checks to see if time is formated in hh-mm-ss
+        if so, return true
+        else, return false
+    */
+    public boolean isValidDateFormat(String value) {
+        Date date = null;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd");
+            date = sdf.parse(value);
+            if (!value.equals(sdf.format(date))) {
+                date = null;
+            }
+        } catch (ParseException ex) {
+            ex.printStackTrace();
+        }
+        return date != null;
+    }
+
+    /*
+        TODO
+
+        @param value = DECODED time taken from the Cookie header
+        Checks to see if time is formated in hh-mm-ss
+        ALSO Checks to see if value parameter is less than current time.
+
+        if both are NOT TRUE, return false 
+        else return true.
+    */
+    public boolean isValidTime(String value){
+        
+        return true;
+    }
+
+     /*
+        TODO
+
+        @param value = DECODED date and time taken from the Cookie header
+        should replace the value in index_seen.html (%YEAR-%MONTH-%DAY %HOUR-%MINUTE-%SECOND)
+        with the appropriate values. 
+
+        return: VOID 
+    */
     public void setLastSeen(String value){
         // WRITE CODE TO SET VALUES IN INDEX_SEEN.HTML
+        try{
+            String decoded = URLDecoder.decode(value, "UTF-8" );
+            // For organlizational purposes -> Splits the decoded cookie into individual parts
 
+            // fullYear formated: yyyy-mm-dd
+            String fullYear = decoded.split(" ")[0];
+                String year = fullYear.split("-")[0];
+                String month = fullYear.split("-")[1];
+                String day = fullYear.split("-")[2];
+
+            //fullTime formatted: hh-mm-ss
+            String fullTime = decoded.split(" ")[1];
+                String hour = fullTime.split(":")[0];
+                String min = fullTime.split(":")[1];
+                String sec = fullTime.split(":")[2];
+            
+            
+            // REPALCE THE VALUES IN index_seen.html at %YEAR-%MONTH-%DAY %HOUR-%MINUTE-%SECOND
+
+        }catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
         // TBH I have no idea how to do this.
     }
 
