@@ -123,7 +123,7 @@ public class serverThread extends Thread {
                     setLastSeen(CookieVal.split("=")[1]);
                     file = "./index_seen.html";
                 } else {
-                    sendErrorCode(500);
+                    file="./index.html";
                     return;
                 }
             }
@@ -152,14 +152,12 @@ public class serverThread extends Thread {
             if (decoded.split("=")[0].equals("lasttime"))
                 if (isValidDateFormat(decoded.split("=")[1]))
                         returnVal = true;
-                    else {
-                        sendErrorCode(403);
-                        returnVal = false;
-                    }
+            else {
+                returnVal = false;
+            }
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-            sendErrorCode(500);
             returnVal = false;
         }
 
