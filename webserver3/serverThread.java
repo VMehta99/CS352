@@ -122,10 +122,7 @@ public class serverThread extends Thread {
                 if (isValidCookie(CookieVal)) {
                     setLastSeen(CookieVal.split("=")[1]);
                     file = "./index_seen.html";
-                } else {
-                    file="./index.html";
-                    return;
-                }
+                } 
             }
         }
 
@@ -149,12 +146,15 @@ public class serverThread extends Thread {
         boolean returnVal = false;
         try {
             String decoded = URLDecoder.decode(CookieVal, "UTF-8");
-            if (decoded.split("=")[0].equals("lasttime"))
+            if (decoded.split("=")[0].equals("lasttime")){
                 if (isValidDateFormat(decoded.split("=")[1]))
                         returnVal = true;
-            else {
-                returnVal = false;
+                else
+                    returnVal = false;
             }
+            else 
+                returnVal = false;
+
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -182,31 +182,6 @@ public class serverThread extends Thread {
             }
             if(!sdf.parse(sdf.format(now)).after(sdf.parse(value)))
                 date = null;
-        } catch (ParseException ex) {
-            ex.printStackTrace();
-        }
-        return date != null;
-    }
-
-    /*
-     * TODO
-     * 
-     * @param value = DECODED time taken from the Cookie header 
-     * Checks to see if time is formated in hh-mm-ss ALSO Checks to see if value parameter is less than current time.
-     * 
-     * if both are NOT TRUE, return false else return true.
-     */
-    public boolean isValidTime(String value) {
-        value = value.trim();
-        System.out.println(value);
-        Date date = null;
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-            date = sdf.parse(value);
-            System.out.println(sdf.format(date));
-            if (!value.equals(sdf.format(date))) {
-                date = null;
-            }
         } catch (ParseException ex) {
             ex.printStackTrace();
         }
